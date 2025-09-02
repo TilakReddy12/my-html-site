@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lookup Directory</title>
+
+  <!-- XLSX Library for Excel file reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: white;
+      color: black;
+    }
+
+    .login-page, .main-page {
+      display: none;
+      min-height: 100vh;
+      width: 100%;
+      flex-direction: column;
+    }
+
+    .login-page.active, .main-page.active {
+      display: flex;
+    }
+
+    .login-page {
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-page h2 {
+      margin-bottom: 15px;
+    }
+
+    .login-page input {
+      padding: 8px;
+      width: 220px;
+      margin: 5px 0;
+      border: 1px solid #007BFF;
+    }
+
+    .top-bar {
+      width: 100%;
+      background: #007BFF;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+    }
+
+    .lookup {
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .menu-button {
+      margin-left: 10px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      font-size: 20px;
+      padding: 5px 10px;
+    }
+
+    .logout-button {
+      cursor: pointer;
+      border: none;
+      background: white;
+      color: #007BFF;
+      font-size: 14px;
+      padding: 5px 10px;
+    }
+
+    .dropdown {
+      display: none;
+      position: absolute;
+      top: 50px;
+      left: 120px;
+      background-color: white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+
+    .dropdown div {
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .dropdown div:hover {
+      background-color: #e6f0ff;
+    }
+
+    .state-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding-bottom: 10px;
+    }
+
+    select, input {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #007BFF;
+      color: black;
+      background-color: white;
+    }
+
+    .search-button {
+      padding: 8px 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0056b3;
+    }
+
+    table {
+      width: 95%;
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+
+    th, td {
+      border: 1px solid #007BFF;
+      padding: 6px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background-color: #007BFF;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div class="login-page active" id="loginPage">
+    <div>
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username"><br><br>
+      <input type="password" id="password" placeholder="Password"><br><br>
+      <button class="search-button" onclick="login()">Login</button>
+    </div>
+  </div>
+
+  <!-- Main Page -->
+  <div class="main-page" id="mainPage">
+    <div class="top-bar">
+      <div class="lookup">
+        LOOKUP
+        <button class="menu-button" onclick="toggleDropdown()">☰</button>
+      </div>
+      <button class="logout-button" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="dropdown" id="dropdownMenu">
+      <div onclick="selectState('Andhra Pradesh')">Andhra Pradesh</div>
+      <div onclick="selectState('Tamil Nadu')">Tamil Nadu</div>
+      <div onclick="selectState('Karnataka')">Karnataka</div>
+      <div onclick="selectState('Kerala')">Kerala</div>
+      <div onclick="selectState('Maharashtra')">Maharashtra</div>
+      <div onclick="selectState('Telangana')">Telangana</div>
+    </div>
+
+    <div class="state-title" id="stateTitle">ANDHRA PRADESH</div>
+
+    <!-- File Upload -->
+    <div style="text-align: center; margin: 10px;">
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls" onchange="handleExcelUpload(event)" />
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <select id="filterSelect" onchange="updatePlaceholder()">
+        <!-- Options will be auto-populated -->
+      </select>
+      <input type="text" id="filterInput" placeholder="Enter here">
+      <button class="search-button" onclick="searchCSV()">Search</button>
+    </div>
+
+    <!-- Results -->
+    <div id="results"></div>
+  </div>
+
+  <script>
+    let csvData = []; // Excel data will be stored here
+
+    function login() {
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      if (user && pass) {
+        document.getElementById('loginPage').classList.remove('active');
+        document.getElementById('mainPage').classList.add('active');
+      } else {
+        alert('Enter username and password');
+      }
+    }
+
+    function logout() {
+      document.getElementById('mainPage').classList.remove('active');
+      document.getElementById('loginPage').classList.add('active');
+    }
+
+    function toggleDropdown() {
+      const dropdown = document.getElementById('dropdownMenu');
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function selectState(state) {
+      document.getElementById('stateTitle').textContent = state.toUpperCase();
+      document.getElementById('dropdownMenu').style.display = 'none';
+    }
+
+    function updatePlaceholder() {
+      const select = document.getElementById("filterSelect");
+      const input = document.getElementById("filterInput");
+      input.placeholder = "Enter " + select.options[select.selectedIndex].text;
+    }
+
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Use first sheet
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        csvData = XLSX.utils.sheet_to_json(firstSheet);
+
+        if (csvData.length > 0) {
+          const headers = Object.keys(csvData[0]);
+          const filterSelect = document.getElementById("filterSelect");
+          filterSelect.innerHTML = ""; // clear old options
+
+          headers.forEach(h => {
+            const opt = document.createElement("option");
+            opt.value = h.trim();
+            opt.textContent = h.replace(/_/g, " "); // nicer label
+            filterSelect.appendChild(opt);
+          });
+        }
+
+        alert("Excel data loaded successfully!");
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function searchCSV() {
+      if (csvData.length === 0) {
+        alert("Please upload an Excel file first.");
+        return;
+      }
+
+      const filterType = document.getElementById("filterSelect").value;
+      const filterValue = document.getElementById("filterInput").value.trim().toUpperCase();
+
+      if (!filterValue) {
+        alert("Enter a search term");
+        return;
+      }
+
+      const matches = csvData.filter(row => 
+        row[filterType]?.toString().toUpperCase().includes(filterValue)
+      );
+
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+
+      if (matches.length > 0) {
+        let table = "<table><tr>";
+        Object.keys(matches[0]).forEach(col => {
+          table += `<th>${col}</th>`;
+        });
+        table += "</tr>";
+
+        matches.forEach(row => {
+          table += "<tr>";
+          Object.values(row).forEach(val => {
+            table += `<td>${val ?? ""}</td>`;
+          });
+          table += "</tr>";
+        });
+
+        table += "</table>";
+        resultsDiv.innerHTML = table;
+      } else {
+        resultsDiv.innerHTML = "<p style='text-align:center;color:red;'>No matching record found.</p>";
+      }
+    }
+  </script>
+</body>
+</html>
